@@ -8,6 +8,7 @@ import requests
 from PIL import Image
 from io import BytesIO
 import base64
+from mail_tm import MailTM
 
 
 def ca_f_encrypt(frames, index, pid):
@@ -386,6 +387,7 @@ def save_account_info(name, account_info):
         json.dump(account_info, f, ensure_ascii=False, indent=4)
 
 
+
 # 程序运行主函数
 def main():
     # 1、初始化参数
@@ -399,7 +401,18 @@ def main():
     rtc_token = random_rtc_token()
     print(f"当前版本:{version} 设备号:{device_id} 令牌:{rtc_token}")
     invite_code = input('请输入你的邀请码：')
-    email = input("请输入注册用的邮箱：")
+    # 选择邮箱输入方式
+    email_choice = input('请选择邮箱输入方式 (1: 使用临时邮箱 2: 手动输入邮箱): ')
+    if email_choice == '1':
+        # 创建临时邮箱
+        mail_client = MailTM()
+        email = mail_client.create_account()
+        print(f"临时邮箱:{email}")
+    else:
+        # 手动输入邮箱
+        email = input('请输入你的邮箱: ')
+        print(f"使用邮箱:{email}")
+    
     # 2、实例化PikPak类
     pikpak = PikPak(invite_code, client_id, device_id, version, algorithms, email, rtc_token, client_secret,
                     package_name)
@@ -419,8 +432,15 @@ def main():
     pikpak.report(sign_encrypt_info['request_id'], sign_encrypt_info['sign'], captcha_result['pid'],
                   captcha_result['traceid'])
     pikpak.verification()
-    # 6、提交验证码
-    verification_code = input("请输入接收到的验证码：")
+    # 6、获取验证码
+    if email_choice == '1':
+        # 使用临时邮箱自动获取验证码
+        verification_code = mail_client.wait_for_verification_code()
+        print("自动获取到验证码:" + verification_code)
+    else:
+        # 手动输入验证码
+        verification_code = input('请输入收到的验证码: ')
+        print("手动输入验证码:" + verification_code)
     pikpak.verify_post(verification_code)
     # 7、刷新timestamp，加密sign值。
     pikpak.init("POST:/v1/auth/signup")
@@ -448,5 +468,6 @@ def main():
 
 
 if __name__ == "__main__":
+    print("二改作者仓库 https://github.com/Hanzzkj652/Pikpak-Auto-Invitation2 ,增加了适配临时邮箱")
     print("开发者声明：免费转载需标注出处：B站-纸鸢花的花语，此工具仅供交流学习和技术分析，严禁用于任何商业牟利行为。（包括但不限于倒卖、二改倒卖、引流、冒充作者、广告植入...）")
     main()
